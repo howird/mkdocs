@@ -177,6 +177,8 @@ def get_navigation(files: Files, config: MkDocsConfig) -> Navigation:
 
 
 def _data_to_navigation(data, files: Files, config: MkDocsConfig):
+    """ Return list of navigation elements from nav data list. """
+    return [_handle_nav_element(element, files, config) for element in data]
     if isinstance(data, dict):
         return [
             _data_to_navigation((key, value), files, config)
@@ -202,6 +204,62 @@ def _data_to_navigation(data, files: Files, config: MkDocsConfig):
             )
         return Page(title, file, config)
     return Link(title, path)
+
+
+def _handle_nav_element(data, files, config):
+    """ Converts each nav element into corresponding Page/Section/Link object. """
+    if isinstance(data, str):
+        return Page(None, files.get_file_from_path(data), config)
+
+    elif isinstance(data, dict):
+        assert len(data) == 1, 'each nav element dict should only have one element'
+        name, value = list(data.items())[0]
+
+        if isinstance(value, list):
+            items = _merge_dicts(value)
+            return _handle_blog_page(name, items, files, config) if items.get('sections', False) \
+                else Section(title=name, children=_data_to_navigation(value, files, config))
+
+        if isinstance(value, str):
+            file = files.get_file_from_path(value)
+            return Page(name, files.get_file_from_path(value), config) if file \
+                else Link(name, value)
+
+    raise Exception('No conditions met when handling nav elements')
+
+
+def _handle_blog_page(key, items, files, config):
+    """ Return blog page with correct name and path. """
+    name = items.get('name',  key if not key.endswith('.md') else None)
+    file_path = items.get('path', key if key.endswith('.md') else None)
+
+    assert file_path, f'file path to {name} must be set in config file'
+
+    page = Page(name, files.get_file_from_path(file_path), config)
+    page.sections = _handle_blog_sections(items['sections'], files, config, page)
+    return page
+
+
+def _handle_blog_sections(sections, files, config, parent):
+    """ Generates and links all child articles for blog page. """
+    sections = _merge_dicts(sections)
+    ret = {}
+    for name, folder_path in sections.items():
+        article_files = files.get_files_from_folder_path(folder_path)
+        article_pages = [Page(None, article_file, config, parent) for article_file in article_files]
+        _add_previous_and_next_links(article_pages)
+        ret[name] = article_pages
+    return ret
+
+
+def _merge_dicts(dlist: list[dict]):
+    """ Merges list of dictionaries. """
+    ret = {}
+    for di in dlist:
+        if isinstance(di, str):
+            continue
+        ret.update(di)
+    return ret
 
 
 T = TypeVar('T')

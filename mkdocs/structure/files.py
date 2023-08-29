@@ -88,6 +88,13 @@ class Files:
         """Return a File instance with File.src_uri equal to path."""
         return self.src_uris.get(PurePath(path).as_posix())
 
+    def get_files_from_folder_path(self, path):
+        """ Return a list of File instances located within path. """
+        return [
+            file for file in self._files 
+            if file.src_path.startswith(os.path.normpath(path)) and file.is_documentation_page()
+        ]
+
     def append(self, file: File) -> None:
         """Append file to Files collection."""
         self._src_uris = None

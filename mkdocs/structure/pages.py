@@ -31,13 +31,14 @@ log = logging.getLogger(__name__)
 
 
 class Page(StructureItem):
-    def __init__(self, title: str | None, file: File, config: MkDocsConfig) -> None:
+    def __init__(self, title: str | None, file: File, config: MkDocsConfig, parent=None) -> None:
         file.page = self
         self.file = file
         if title is not None:
             self.title = title
 
         # Navigation attributes
+        self.parent = parent
         self.children = None
         self.previous_page = None
         self.next_page = None
